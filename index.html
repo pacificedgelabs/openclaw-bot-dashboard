@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🦞 Bot Command Center</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0e17;--bg2:#0d1321;--card:#111827;--card-border:#1e293b;
+  --cyan:#00f0ff;--cyan-dim:#00f0ff33;--cyan-bg:#00f0ff11;
+  --green:#22c55e;--red:#ef4444;--yellow:#eab308;--orange:#f97316;--purple:#a855f7;--blue:#3b82f6;
+  --gray:#6b7280;--text:#e2e8f0;--text-dim:#94a3b8;--text-muted:#475569;
+  --radius:10px;--transition:all .25s ease;
+}
+[data-theme="light"]{
+  --bg:#f1f5f9;--bg2:#e2e8f0;--card:#ffffff;--card-border:#cbd5e1;
+  --text:#1e293b;--text-dim:#475569;--text-muted:#94a3b8;--cyan-dim:#00808033;--cyan-bg:#00f0ff08;
+}
+body{background:var(--bg);color:var(--text);font-family:'SF Mono',Monaco,'Cascadia Code','Fira Code',monospace;min-height:100vh;transition:background .3s,color .3s}
+a{color:var(--cyan)}
+button{cursor:pointer;font-family:inherit}
+
+/* Header */
+.header{padding:16px 24px;border-bottom:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:var(--bg2);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px)}
+.header-left{display:flex;align-items:center;gap:12px}
+.header h1{font-size:18px;font-weight:700;color:var(--cyan);text-shadow:0 0 20px var(--cyan-dim);white-space:nowrap}
+.header-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ctrl-btn{background:var(--card);border:1px solid var(--card-border);color:var(--text-dim);padding:5px 10px;border-radius:6px;font-size:11px;transition:var(--transition)}
+.ctrl-btn:hover,.ctrl-btn.active{border-color:var(--cyan);color:var(--cyan)}
+.ctrl-btn.active{background:var(--cyan-bg)}
+.ctrl-select{background:var(--card);border:1px solid var(--card-border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit}
+
+/* Launch bar */
+.launch-bar{display:flex;gap:8px;padding:12px 24px;background:var(--bg2);border-bottom:1px solid var(--card-border)}
+.launch-bar input{flex:1;background:var(--card);border:1px solid var(--card-border);color:var(--text);padding:8px 12px;border-radius:8px;font-family:inherit;font-size:12px}
+.launch-bar input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 10px var(--cyan-dim)}
+.launch-bar input::placeholder{color:var(--text-muted)}
+.launch-btn{background:linear-gradient(135deg,#00f0ff22,#06b6d422);border:1px solid var(--cyan);color:var(--cyan);padding:8px 20px;border-radius:8px;font-weight:600;font-size:12px;transition:var(--transition)}
+.launch-btn:hover{background:var(--cyan);color:var(--bg)}
+
+/* Stats row */
+.stats-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:16px 24px}
+@media(max-width:800px){.stats-row{grid-template-columns:repeat(3,1fr)}}
+.stat-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:14px 16px;text-align:center;transition:var(--transition)}
+.stat-card:hover{border-color:var(--cyan);box-shadow:0 0 15px var(--cyan-dim)}
+.stat-num{font-size:24px;font-weight:700;color:var(--cyan);text-shadow:0 0 12px var(--cyan-dim)}
+.stat-label{font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;margin-top:4px}
+
+/* Timeline */
+.timeline-section{padding:0 24px 16px;overflow-x:auto}
+.timeline-title{font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-top:8px}
+.timeline{position:relative;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);min-height:80px;padding:8px 0;overflow:hidden}
+.timeline-axis{display:flex;justify-content:space-between;padding:0 8px;font-size:9px;color:var(--text-muted);border-bottom:1px solid var(--card-border);padding-bottom:4px;margin-bottom:4px}
+.timeline-row{position:relative;height:22px;margin:2px 8px;display:flex;align-items:center}
+.timeline-bar{position:absolute;height:16px;border-radius:4px;font-size:9px;color:#fff;display:flex;align-items:center;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:20px;transition:var(--transition)}
+.timeline-bar.running{background:linear-gradient(90deg,var(--cyan),#06b6d4);animation:tl-pulse 2s infinite}
+.timeline-bar.completed{background:var(--green)}
+.timeline-bar.idle{background:var(--gray)}
+.timeline-bar.failed{background:var(--red)}
+@keyframes tl-pulse{0%,100%{opacity:1}50%{opacity:.7}}
+
+/* Filters */
+.filters{display:flex;gap:8px;padding:0 24px 12px;flex-wrap:wrap;align-items:center}
+.filter-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px}
+.search-input{background:var(--card);border:1px solid var(--card-border);color:var(--text);padding:5px 10px;border-radius:6px;font-size:11px;font-family:inherit;width:200px}
+.search-input:focus{outline:none;border-color:var(--cyan)}
+
+/* Cards grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px;padding:0 24px 20px}
+@media(max-width:500px){.grid{grid-template-columns:1fr}}
+
+/* Bot card */
+.card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:16px;transition:var(--transition);position:relative;overflow:hidden}
+.card:hover{border-color:var(--cyan);box-shadow:0 0 20px var(--cyan-dim)}
+.card.running{border-left:3px solid var(--cyan)}
+.card.running::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:scan 2s linear infinite}
+.card.failed{border-left:3px solid var(--red);box-shadow:0 0 15px #ef444422;animation:red-glow 2s ease-in-out infinite}
+@keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes red-glow{0%,100%{box-shadow:0 0 10px #ef444422}50%{box-shadow:0 0 25px #ef444444}}
+
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.card-label{font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+[data-theme="light"] .card-label{color:#1e293b}
+.card-id{font-size:9px;color:var(--text-muted);margin-top:2px;font-family:monospace}
+.card-actions{display:flex;gap:4px}
+.action-btn{background:none;border:1px solid var(--card-border);color:var(--text-dim);padding:3px 8px;border-radius:4px;font-size:10px;transition:var(--transition)}
+.action-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.action-btn.kill{color:var(--red);border-color:#ef444444}
+.action-btn.kill:hover{background:#ef444422;border-color:var(--red)}
+
+.tag{font-size:9px;padding:2px 7px;border-radius:99px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.tag-peptide{background:#22c55e22;color:var(--green)}
+.tag-dashboard{background:#3b82f622;color:var(--blue)}
+.tag-deploy{background:#f9731622;color:var(--orange)}
+.tag-api{background:#a855f722;color:var(--purple)}
+.tag-fix{background:#ef444422;color:var(--red)}
+.tag-test{background:#eab30822;color:var(--yellow)}
+.tag-default{background:#6b728022;color:var(--gray)}
+
+.badge{font-size:9px;padding:2px 8px;border-radius:99px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.badge.running{background:#00f0ff22;color:var(--cyan);animation:pulse 2s infinite}
+.badge.completed{background:#22c55e22;color:var(--green)}
+.badge.idle{background:#6b728022;color:var(--gray)}
+.badge.failed{background:#ef444422;color:var(--red)}
+
+.card-task{font-size:11px;color:var(--text-dim);margin:6px 0;line-height:1.4;max-height:60px;overflow:hidden}
+.card-task.expanded{max-height:none}
+.task-toggle{color:var(--cyan);cursor:pointer;font-size:10px;background:none;border:none;font-family:inherit}
+
+.card-model{font-size:10px;color:var(--text-muted);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--cyan);display:inline-block}
+
+/* Token bar chart on card */
+.token-bars{display:flex;gap:4px;align-items:center;margin:8px 0;font-size:9px;color:var(--text-muted)}
+.token-bar-wrap{flex:1;height:8px;background:var(--card-border);border-radius:4px;overflow:hidden;position:relative}
+.token-bar-in{height:100%;background:var(--blue);border-radius:4px;transition:width .5s}
+.token-bar-out{height:100%;background:var(--purple);border-radius:4px;transition:width .5s;position:absolute;top:0}
+
+.card-meta{display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-top:6px}
+.card-cost{font-size:11px;color:var(--yellow);font-weight:600}
+
+/* Burn rate */
+.burn-rate{font-size:10px;color:var(--orange);margin-top:4px}
+
+/* Compact view */
+.compact-table{width:100%;border-collapse:collapse;margin:0 24px 20px;font-size:11px;max-width:calc(100% - 48px)}
+.compact-table th{text-align:left;padding:6px 10px;color:var(--text-muted);text-transform:uppercase;font-size:9px;letter-spacing:1px;border-bottom:1px solid var(--card-border)}
+.compact-table td{padding:6px 10px;border-bottom:1px solid var(--card-border);color:var(--text-dim)}
+.compact-table tr:hover{background:var(--cyan-bg)}
+
+/* Charts section */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 24px 16px}
+@media(max-width:700px){.charts-row{grid-template-columns:1fr}}
+.chart-box{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:14px}
+.chart-title{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+/* Bar chart */
+.bar-chart{display:flex;align-items:flex-end;gap:4px;height:100px;padding-top:4px}
+.bar-col{display:flex;flex-direction:column;align-items:center;flex:1;min-width:20px}
+.bar{width:100%;border-radius:3px 3px 0 0;transition:height .5s;min-height:2px}
+.bar-label{font-size:8px;color:var(--text-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50px;text-align:center}
+/* Donut */
+.donut-wrap{display:flex;align-items:center;gap:16px}
+.donut{width:80px;height:80px;border-radius:50%;position:relative}
+.donut-legend{font-size:10px;color:var(--text-dim)}
+.donut-legend div{display:flex;align-items:center;gap:6px;margin:3px 0}
+.legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+/* History */
+.history-section{padding:0 24px 24px}
+.history-title{font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.history-table-wrap{max-height:300px;overflow-y:auto;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius)}
+.history-table{width:100%;border-collapse:collapse;font-size:11px}
+.history-table th{position:sticky;top:0;background:var(--bg2);text-align:left;padding:8px 10px;color:var(--text-muted);text-transform:uppercase;font-size:9px;letter-spacing:1px;border-bottom:1px solid var(--card-border)}
+.history-table td{padding:6px 10px;border-bottom:1px solid var(--card-border);color:var(--text-dim)}
+.history-table tr:hover{background:var(--cyan-bg)}
+.history-table .clickable{cursor:pointer;color:var(--cyan)}
+
+/* Back to top */
+.back-top{position:fixed;bottom:24px;right:24px;background:var(--cyan);color:var(--bg);border:none;width:40px;height:40px;border-radius:50%;font-size:18px;display:none;align-items:center;justify-content:center;box-shadow:0 4px 15px var(--cyan-dim);z-index:200;transition:var(--transition)}
+.back-top:hover{transform:scale(1.1)}
+
+/* Empty state */
+.empty{text-align:center;padding:60px 24px;color:var(--text-dim)}
+.empty .icon{font-size:48px;margin-bottom:12px}
+
+.live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;display:inline-block;animation:pulse 1.5s infinite}
+
+/* Toast */
+.toast{position:fixed;bottom:70px;right:24px;background:var(--card);border:1px solid var(--cyan);color:var(--cyan);padding:10px 16px;border-radius:8px;font-size:12px;z-index:300;animation:toast-in .3s ease;box-shadow:0 4px 20px var(--cyan-dim)}
+@keyframes toast-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <h1>🦞 Bot Command Center</h1>
+    <span class="live-dot"></span>
+  </div>
+  <div class="header-controls">
+    <button class="ctrl-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light">🌙</button>
+    <button class="ctrl-btn" id="sound-toggle" onclick="toggleSound()" title="Toggle sounds">🔔</button>
+    <button class="ctrl-btn" id="notif-toggle" onclick="toggleNotifs()" title="Toggle notifications">📢</button>
+    <button class="ctrl-btn" id="view-toggle" onclick="toggleView()" title="Compact/Detailed">📋</button>
+    <select class="ctrl-select" id="refresh-interval" onchange="setRefreshInterval(this.value)" title="Refresh interval">
+      <option value="5000">5s</option>
+      <option value="10000" selected>10s</option>
+      <option value="30000">30s</option>
+      <option value="60000">60s</option>
+    </select>
+  </div>
+</div>
+
+<!-- Launch bar -->
+<div class="launch-bar">
+  <input type="text" id="launch-label" placeholder="Label (e.g. my-task)" style="max-width:160px">
+  <input type="text" id="launch-task" placeholder="Describe the task for the new bot...">
+  <button class="launch-btn" onclick="launchBot()">🚀 Launch</button>
+</div>
+
+<!-- Stats row -->
+<div class="stats-row" id="stats-row">
+  <div class="stat-card"><div class="stat-num" id="s-total">-</div><div class="stat-label">Total Bots</div></div>
+  <div class="stat-card"><div class="stat-num" id="s-running">-</div><div class="stat-label">Running</div></div>
+  <div class="stat-card"><div class="stat-num" id="s-completed">-</div><div class="stat-label">Completed</div></div>
+  <div class="stat-card"><div class="stat-num" id="s-tokens">-</div><div class="stat-label">Total Tokens</div></div>
+  <div class="stat-card"><div class="stat-num" id="s-cost">-</div><div class="stat-label">Est. Cost</div></div>
+  <div class="stat-card"><div class="stat-num" id="s-avgtime">-</div><div class="stat-label">Avg Runtime</div></div>
+</div>
+
+<!-- Timeline -->
+<div class="timeline-section">
+  <div class="timeline-title">Session Timeline</div>
+  <div class="timeline" id="timeline"></div>
+</div>
+
+<!-- Charts -->
+<div class="charts-row">
+  <div class="chart-box">
+    <div class="chart-title">Token Usage by Bot</div>
+    <div class="bar-chart" id="token-chart"></div>
+  </div>
+  <div class="chart-box">
+    <div class="chart-title">Model Distribution</div>
+    <div class="donut-wrap" id="model-chart"></div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+  <span class="filter-label">Filter:</span>
+  <button class="ctrl-btn active" data-filter="all" onclick="setFilter('all',this)">All</button>
+  <button class="ctrl-btn" data-filter="running" onclick="setFilter('running',this)">Running</button>
+  <button class="ctrl-btn" data-filter="completed" onclick="setFilter('completed',this)">Completed</button>
+  <button class="ctrl-btn" data-filter="failed" onclick="setFilter('failed',this)">Failed</button>
+  <span class="filter-label" style="margin-left:12px">Sort:</span>
+  <select class="ctrl-select" id="sort-select" onchange="refresh()">
+    <option value="date">Date</option>
+    <option value="runtime">Runtime</option>
+    <option value="cost">Cost</option>
+    <option value="tokens">Tokens</option>
+  </select>
+  <input class="search-input" id="search-input" placeholder="🔍 Search bots..." oninput="refresh()">
+</div>
+
+<!-- Bot cards / compact table -->
+<div id="cards-container">
+  <div class="grid" id="grid"></div>
+</div>
+<div class="empty" id="empty" style="display:none"><div class="icon">🦞</div><p>No bots match your filters.</p></div>
+
+<!-- History -->
+<div class="history-section">
+  <div class="history-title">
+    <span>📜 Task History (All Time)</span>
+    <input class="search-input" id="history-search" placeholder="🔍 Filter history..." oninput="renderHistory()" style="width:180px">
+  </div>
+  <div class="history-table-wrap">
+    <table class="history-table" id="history-table">
+      <thead><tr><th>Label</th><th>Status</th><th>Runtime</th><th>Tokens</th><th>Cost</th><th>Date</th><th>Actions</th></tr></thead>
+      <tbody id="history-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Back to top -->
+<button class="back-top" id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+// ── State ──
+let state = { sessions: [], history: [], cost: null };
+let prevStatuses = {};
+let currentFilter = 'all';
+let compactView = false;
+let soundEnabled = localStorage.getItem('sound') !== 'off';
+let notifsEnabled = localStorage.getItem('notifs') !== 'off';
+let refreshTimer = null;
+let expandedTasks = new Set();
+
+// ── Theme ──
+function toggleTheme() {
+  const t = document.documentElement.getAttribute('data-theme') === 'light' ? '' : 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('theme', t);
+  document.getElementById('theme-toggle').textContent = t === 'light' ? '☀️' : '🌙';
+}
+(function(){
+  const t = localStorage.getItem('theme') || '';
+  if (t) { document.documentElement.setAttribute('data-theme', t); document.getElementById('theme-toggle').textContent = '☀️'; }
+})();
+
+// ── Sound ──
+function playTone(freq = 800, dur = 0.15) {
+  if (!soundEnabled) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = freq; o.type = 'sine';
+    g.gain.setValueAtTime(0.1, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    o.start(); o.stop(ctx.currentTime + dur);
+  } catch(e) {}
+}
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem('sound', soundEnabled ? 'on' : 'off');
+  document.getElementById('sound-toggle').textContent = soundEnabled ? '🔔' : '🔕';
+}
+if (!soundEnabled) document.getElementById('sound-toggle').textContent = '🔕';
+
+// ── Notifications ──
+function toggleNotifs() {
+  notifsEnabled = !notifsEnabled;
+  localStorage.setItem('notifs', notifsEnabled ? 'on' : 'off');
+  document.getElementById('notif-toggle').textContent = notifsEnabled ? '📢' : '🔇';
+  if (notifsEnabled && Notification.permission === 'default') Notification.requestPermission();
+}
+if (notifsEnabled && Notification.permission === 'default') Notification.requestPermission();
+if (!notifsEnabled) document.getElementById('notif-toggle').textContent = '🔇';
+
+function sendNotif(title, body) {
+  if (!notifsEnabled || Notification.permission !== 'granted') return;
+  try { new Notification(title, { body, icon: '🦞' }); } catch(e) {}
+}
+
+// ── View toggle ──
+function toggleView() {
+  compactView = !compactView;
+  document.getElementById('view-toggle').textContent = compactView ? '🗂️' : '📋';
+  refresh();
+}
+
+// ── Refresh interval ──
+function setRefreshInterval(ms) {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(refresh, parseInt(ms));
+}
+
+// ── Filter ──
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filters .ctrl-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  refresh();
+}
+
+// ── Helpers ──
+function fmtDuration(ms) {
+  if (!ms || ms < 0) return '—';
+  const s = Math.floor(ms/1000), m = Math.floor(s/60), h = Math.floor(m/60);
+  if (h > 0) return `${h}h ${m%60}m`;
+  if (m > 0) return `${m}m ${s%60}s`;
+  return `${s}s`;
+}
+function fmtTokens(n) {
+  if (!n) return '0';
+  if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return n.toString();
+}
+function fmtTime(ts) {
+  return ts ? new Date(ts).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : '—';
+}
+function fmtDate(ts) {
+  return ts ? new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+}
+function escHtml(s) { return s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
+function estimateCost(inp, out) {
+  return (inp||0) * 3 / 1e6 + (out||0) * 15 / 1e6;
+}
+function fmtCost(v) {
+  return v >= 0.01 ? '$'+v.toFixed(2) : v > 0 ? '$'+v.toFixed(4) : '$0.00';
+}
+
+function detectTag(label) {
+  const l = (label||'').toLowerCase();
+  const tags = {peptide:'tag-peptide',dashboard:'tag-dashboard',deploy:'tag-deploy',api:'tag-api',fix:'tag-fix',bug:'tag-fix',test:'tag-test',upgrade:'tag-dashboard',build:'tag-deploy'};
+  for (const [k,v] of Object.entries(tags)) { if (l.includes(k)) return {cls:v, name:k}; }
+  return {cls:'tag-default', name: l.split(/[-_ ]/)[0] || 'task'};
+}
+
+// ── API calls ──
+async function killBot(sessionKey) {
+  if (!confirm('Kill this bot?')) return;
+  try {
+    const r = await fetch('/api/kill', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionKey})});
+    const d = await r.json();
+    showToast(d.ok ? 'Kill signal sent' : 'Error: '+d.message);
+    setTimeout(refresh, 1000);
+  } catch(e) { showToast('Failed: '+e.message); }
+}
+
+async function rerunBot(task, label) {
+  try {
+    const r = await fetch('/api/rerun', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task, label: label+'-rerun'})});
+    const d = await r.json();
+    showToast(d.ok ? 'Re-run spawned!' : 'Error');
+    setTimeout(refresh, 2000);
+  } catch(e) { showToast('Failed: '+e.message); }
+}
+
+async function launchBot() {
+  const task = document.getElementById('launch-task').value.trim();
+  const label = document.getElementById('launch-label').value.trim() || 'launched';
+  if (!task) { showToast('Enter a task first'); return; }
+  try {
+    const r = await fetch('/api/launch', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({task, label})});
+    const d = await r.json();
+    showToast(d.ok ? '🚀 Bot launched!' : 'Error');
+    document.getElementById('launch-task').value = '';
+    document.getElementById('launch-label').value = '';
+    setTimeout(refresh, 2000);
+  } catch(e) { showToast('Failed: '+e.message); }
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ── Rendering ──
+function renderTimeline(sessions) {
+  const el = document.getElementById('timeline');
+  if (!sessions.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:11px">No sessions</div>'; return; }
+  const now = Date.now();
+  const allTimes = sessions.flatMap(s => [s.startedAt || s.createdAt, s.updatedAt]);
+  const minT = Math.min(...allTimes), maxT = Math.max(...allTimes, now);
+  const range = maxT - minT || 1;
+
+  // Time axis
+  const axisPoints = 6;
+  let axisHtml = '<div class="timeline-axis">';
+  for (let i = 0; i < axisPoints; i++) {
+    const t = minT + (range * i / (axisPoints-1));
+    axisHtml += `<span>${fmtTime(t)}</span>`;
+  }
+  axisHtml += '</div>';
+
+  let rowsHtml = '';
+  sessions.forEach(s => {
+    const start = ((s.startedAt || s.createdAt) - minT) / range * 100;
+    const end = (s.updatedAt - minT) / range * 100;
+    const width = Math.max(end - start, 1);
+    rowsHtml += `<div class="timeline-row"><div class="timeline-bar ${s.status}" style="left:${start}%;width:${width}%" title="${escHtml(s.label)}">${escHtml(s.label)}</div></div>`;
+  });
+  el.innerHTML = axisHtml + rowsHtml;
+}
+
+function renderCharts(sessions) {
+  // Token bar chart
+  const chartEl = document.getElementById('token-chart');
+  const sorted = [...sessions].sort((a,b) => (b.totalTokens||0) - (a.totalTokens||0)).slice(0, 12);
+  const maxTok = Math.max(...sorted.map(s => s.totalTokens || 1));
+  chartEl.innerHTML = sorted.map(s => {
+    const h = Math.max(((s.totalTokens||0)/maxTok)*90, 4);
+    const color = s.status === 'running' ? 'var(--cyan)' : s.status === 'completed' ? 'var(--green)' : 'var(--gray)';
+    return `<div class="bar-col"><div class="bar" style="height:${h}px;background:${color}" title="${s.label}: ${fmtTokens(s.totalTokens)}"></div><div class="bar-label">${escHtml((s.label||'').slice(0,8))}</div></div>`;
+  }).join('');
+
+  // Model donut
+  const modelEl = document.getElementById('model-chart');
+  const models = {};
+  sessions.forEach(s => { const m = s.model||'unknown'; models[m] = (models[m]||0)+1; });
+  const entries = Object.entries(models).sort((a,b) => b[1]-a[1]);
+  const total = sessions.length || 1;
+  const colors = ['var(--cyan)','var(--green)','var(--purple)','var(--orange)','var(--yellow)','var(--red)'];
+  let conic = '', offset = 0;
+  const legendParts = [];
+  entries.forEach(([m,c], i) => {
+    const pct = c / total * 100;
+    const col = colors[i % colors.length];
+    conic += `${col} ${offset}% ${offset+pct}%,`;
+    offset += pct;
+    legendParts.push(`<div><span class="legend-dot" style="background:${col}"></span>${m} (${c})</div>`);
+  });
+  conic = conic.slice(0,-1);
+  modelEl.innerHTML = `<div class="donut" style="background:conic-gradient(${conic});mask:radial-gradient(farthest-side,transparent 55%,#000 56%);-webkit-mask:radial-gradient(farthest-side,transparent 55%,#000 56%)"></div><div class="donut-legend">${legendParts.join('')}</div>`;
+}
+
+function renderCard(s) {
+  const tag = detectTag(s.label);
+  const cost = estimateCost(s.inputTokens, s.outputTokens);
+  const totalTok = (s.inputTokens||0) + (s.outputTokens||0);
+  const inPct = totalTok ? (s.inputTokens / totalTok * 100) : 50;
+  const isExpanded = expandedTasks.has(s.id);
+  const task = s.task || '';
+  const truncTask = task.length > 120 ? task.slice(0,120)+'…' : task;
+  const burnRate = s.status === 'running' && s.ageMs > 0 ? ((s.totalTokens||0) / (s.ageMs/1000)).toFixed(0) : null;
+
+  let actions = '';
+  if (s.status === 'running') actions = `<button class="action-btn kill" onclick="killBot('${escHtml(s.sessionKey)}')">⛔ Kill</button>`;
+  else if (s.status === 'completed' && s.task) actions = `<button class="action-btn" onclick="rerunBot(\`${escHtml(s.task.replace(/`/g,''))}\`,'${escHtml(s.label)}')">🔄 Re-run</button>`;
+
+  return `<div class="card ${s.status}">
+    <div class="card-head">
+      <div>
+        <div class="card-label">
+          ${s.status==='running'?'⚡':s.status==='completed'?'✅':s.status==='failed'?'❌':'⏸'}
+          ${escHtml(s.label)}
+          <span class="tag ${tag.cls}">${tag.name}</span>
+        </div>
+        <div class="card-id">${escHtml(s.id)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="badge ${s.status}">${s.status}</span>
+        ${actions}
+      </div>
+    </div>
+    ${task ? `<div class="card-task ${isExpanded?'expanded':''}">${escHtml(isExpanded?task:truncTask)}${task.length>120?` <button class="task-toggle" onclick="expandedTasks.has('${s.id}')?expandedTasks.delete('${s.id}'):expandedTasks.add('${s.id}');refresh()">${isExpanded?'less':'more…'}</button>`:''}</div>` : ''}
+    <div class="card-model"><span class="dot"></span>${escHtml(s.provider+'/'+s.model)}</div>
+    <div class="token-bars">
+      <span>In ${fmtTokens(s.inputTokens)}</span>
+      <div class="token-bar-wrap"><div class="token-bar-in" style="width:${inPct}%"></div></div>
+      <span>Out ${fmtTokens(s.outputTokens)}</span>
+    </div>
+    <div class="card-meta">
+      <span>⏱ ${fmtDuration(s.ageMs)}</span>
+      <span class="card-cost">${fmtCost(cost)}</span>
+      <span>🕐 ${fmtTime(s.updatedAt)}</span>
+    </div>
+    ${burnRate ? `<div class="burn-rate">🔥 ${burnRate} tok/s</div>` : ''}
+  </div>`;
+}
+
+function renderCompactTable(sessions) {
+  return `<table class="compact-table"><thead><tr><th>Label</th><th>Status</th><th>Runtime</th><th>Tokens</th><th>Cost</th><th>Model</th><th>Actions</th></tr></thead><tbody>${sessions.map(s => {
+    const cost = estimateCost(s.inputTokens, s.outputTokens);
+    let actions = '';
+    if (s.status === 'running') actions = `<button class="action-btn kill" onclick="killBot('${escHtml(s.sessionKey)}')">⛔</button>`;
+    else if (s.status === 'completed' && s.task) actions = `<button class="action-btn" onclick="rerunBot(\`${escHtml(s.task.replace(/`/g,''))}\`,'${escHtml(s.label)}')">🔄</button>`;
+    return `<tr><td><span class="badge ${s.status}" style="margin-right:6px">●</span>${escHtml(s.label)}</td><td>${s.status}</td><td>${fmtDuration(s.ageMs)}</td><td>${fmtTokens(s.totalTokens)}</td><td>${fmtCost(cost)}</td><td>${escHtml(s.model)}</td><td>${actions}</td></tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function renderHistory() {
+  const q = (document.getElementById('history-search')?.value || '').toLowerCase();
+  const body = document.getElementById('history-body');
+  const hist = (state.history || [])
+    .filter(s => !q || (s.label||'').toLowerCase().includes(q) || (s.task||'').toLowerCase().includes(q))
+    .sort((a,b) => (b.updatedAt||0) - (a.updatedAt||0));
+  body.innerHTML = hist.map(s => {
+    const cost = estimateCost(s.inputTokens, s.outputTokens);
+    return `<tr><td>${escHtml(s.label)}</td><td><span class="badge ${s.status}">${s.status}</span></td><td>${fmtDuration(s.ageMs)}</td><td>${fmtTokens(s.totalTokens)}</td><td>${fmtCost(cost)}</td><td>${fmtDate(s.updatedAt)}</td><td>${s.task?`<button class="action-btn" onclick="rerunBot(\`${escHtml((s.task||'').replace(/`/g,''))}\`,'${escHtml(s.label)}')">🔄</button>`:''}</td></tr>`;
+  }).join('');
+}
+
+// ── Main refresh ──
+async function refresh() {
+  try {
+    let r;
+    try { r = await fetch('/api/status'); } catch(_) {}
+    if (!r || !r.ok) { r = await fetch('./status.json'); }
+    const d = await r.json();
+    const sessions = d.sessions || [];
+    state.sessions = sessions;
+    state.history = d.history || sessions;
+    state.cost = d.cost;
+
+    // Check for status changes → alerts
+    sessions.forEach(s => {
+      const prev = prevStatuses[s.id];
+      if (prev && prev !== s.status) {
+        if (s.status === 'completed') {
+          playTone(880, 0.12); setTimeout(() => playTone(1100, 0.15), 150);
+          sendNotif('✅ Bot Completed', s.label);
+        } else if (s.status === 'failed') {
+          playTone(300, 0.3);
+          sendNotif('❌ Bot Failed', s.label);
+        }
+      }
+      prevStatuses[s.id] = s.status;
+    });
+
+    // Stats
+    const running = sessions.filter(s => s.status === 'running').length;
+    const completed = sessions.filter(s => s.status === 'completed').length;
+    const totalTok = sessions.reduce((a,s) => a + (s.totalTokens||0), 0);
+    const totalCost = sessions.reduce((a,s) => a + estimateCost(s.inputTokens, s.outputTokens), 0);
+    const completedSessions = sessions.filter(s => s.status === 'completed' && s.ageMs > 0);
+    const avgTime = completedSessions.length ? completedSessions.reduce((a,s) => a + s.ageMs, 0) / completedSessions.length : 0;
+
+    document.getElementById('s-total').textContent = sessions.length;
+    document.getElementById('s-running').textContent = running;
+    document.getElementById('s-completed').textContent = completed;
+    document.getElementById('s-tokens').textContent = fmtTokens(totalTok);
+    document.getElementById('s-cost').textContent = d.cost?.totalCost ? '$'+d.cost.totalCost.toFixed(2) : fmtCost(totalCost);
+    document.getElementById('s-avgtime').textContent = fmtDuration(avgTime);
+
+    // Filter & sort
+    const search = (document.getElementById('search-input')?.value || '').toLowerCase();
+    const sortBy = document.getElementById('sort-select')?.value || 'date';
+    let filtered = sessions.filter(s => {
+      if (currentFilter !== 'all' && s.status !== currentFilter) return false;
+      if (search && !(s.label||'').toLowerCase().includes(search) && !(s.task||'').toLowerCase().includes(search)) return false;
+      return true;
+    });
+    filtered.sort((a,b) => {
+      if (sortBy === 'runtime') return (b.ageMs||0) - (a.ageMs||0);
+      if (sortBy === 'cost') return estimateCost(b.inputTokens,b.outputTokens) - estimateCost(a.inputTokens,a.outputTokens);
+      if (sortBy === 'tokens') return (b.totalTokens||0) - (a.totalTokens||0);
+      // date: running first, then by updatedAt
+      const order = {running:0,completed:1,failed:1,idle:2};
+      if ((order[a.status]||2) !== (order[b.status]||2)) return (order[a.status]||2) - (order[b.status]||2);
+      return (b.updatedAt||0) - (a.updatedAt||0);
+    });
+
+    // Render
+    const container = document.getElementById('cards-container');
+    const empty = document.getElementById('empty');
+    if (filtered.length === 0) { container.innerHTML = ''; empty.style.display = 'block'; }
+    else {
+      empty.style.display = 'none';
+      if (compactView) {
+        container.innerHTML = renderCompactTable(filtered);
+      } else {
+        container.innerHTML = `<div class="grid">${filtered.map(renderCard).join('')}</div>`;
+      }
+    }
+
+    renderTimeline(sessions);
+    renderCharts(sessions);
+    renderHistory();
+  } catch(e) { console.error('Refresh error:', e); }
+}
+
+// ── Back to top ──
+window.addEventListener('scroll', () => {
+  document.getElementById('back-top').style.display = window.scrollY > 300 ? 'flex' : 'none';
+});
+
+// ── Init ──
+refresh();
+refreshTimer = setInterval(refresh, 10000);
+</script>
+</body>
+</html>
