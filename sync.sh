@@ -11,9 +11,14 @@ while true; do
   # Copy index.html
   cp "$DIR/index.html" "$DEPLOY_DIR/"
   
-  # Deploy to Netlify
+  # Deploy to Netlify (may fail if over limits)
   cd "$DEPLOY_DIR"
   netlify deploy --prod --dir . --site "$SITE_ID" 2>&1 | tail -3
+  
+  # Also push to GitHub Pages
+  cd "$DIR"
+  cp "$DEPLOY_DIR/status.json" "$DIR/status.json"
+  git add -A && git commit -m "Update status $(date +%H:%M:%S)" --quiet 2>/dev/null && git push --quiet 2>/dev/null
   
   echo "[$(date)] Deployed"
   sleep 20
